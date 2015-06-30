@@ -5,11 +5,16 @@
 
 package org.mule.modules.jmsbatchmessaging;
 
-import org.mule.DefaultMuleMessage;
-import org.mule.modules.tests.ConnectorTestCase;
-import org.mule.tck.junit4.FunctionalTestCase;
-import org.springframework.util.Assert;
 import org.junit.Test;
+import org.mule.DefaultMuleMessage;
+import org.mule.api.MuleMessage;
+import org.mule.tck.junit4.FunctionalTestCase;
+
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 public class JmsBatchMessagingConnectorTest extends FunctionalTestCase {
     
@@ -20,10 +25,14 @@ public class JmsBatchMessagingConnectorTest extends FunctionalTestCase {
 
     @Test
     public void testFlow() throws Exception {
-		for (int i = 0; i < 1000; i++) {
+		for (int i = 0; i < 10; i++) {
 			muleContext.getClient().dispatch("jms://foo",
 					new DefaultMuleMessage("FOO", muleContext));
 		}
-		Thread.sleep(5000);
+        MuleMessage message = muleContext.getClient().request("jms://completed", 5000);
+		assertNotNull(message);
+        assertTrue(message.getPayload() instanceof List);
+        List messages = message.getPayload(List.class);
+        assertEquals(5, messages.size());
     }
 }

@@ -1,39 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <mule xmlns:batch="http://www.mulesoft.org/schema/mule/batch"
-	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
-	xmlns:jms="http://www.mulesoft.org/schema/mule/jms" xmlns="http://www.mulesoft.org/schema/mule/core"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:spring="http://www.springframework.org/schema/beans"
-	xmlns:jms-batch-messaging="http://www.mulesoft.org/schema/mule/jms-batch-messaging"
-	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+      xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+      xmlns:jms="http://www.mulesoft.org/schema/mule/jms" xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:spring="http://www.springframework.org/schema/beans"
+      xmlns:jms-batch-messaging="http://www.mulesoft.org/schema/mule/jms-batch-messaging"
+      xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
 http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
-http://www.mulesoft.org/schema/mule/jms-batch-messaging http://www.mulesoft.org/schema/mule/jms-batch-messaging/1.0/mule-jms-batch-messaging.xsd
-http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd"
-	version="EE-3.6.2">
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+http://www.mulesoft.org/schema/mule/jms-batch-messaging
+http://www.mulesoft.org/schema/mule/jms-batch-messaging/1.0/mule-jms-batch-messaging.xsd
+"      version="EE-3.6.2">
 
-	<jms-batch-messaging:config-type name="config"/>
-		
-		
-	<jms:activemq-connector name="Active_MQ"
-		specification="1.1" brokerURL="vm://localhost" validateConnections="true"
-		doc:name="Active MQ" />
-	<jms-batch-messaging:config name="JmsBatchMessaging"
-		connector-ref="jmsConnector" doc:name="JmsBatchMessaging" />
-	<batch:job name="jms-batch-messaging-configBatch">
-		<batch:input>
-			<jms-batch-messaging:batch-consume
-				config-ref="JmsBatchMessaging" destinationName="foo" batchSize="5"
-				timeout="1000" doc:name="JmsBatchMessaging (Streaming)" />
-		</batch:input>
-		<batch:process-records>
-			<batch:step name="Batch_Step">
-				<logger message="Batch Step: #[payload]" level="INFO"
-					doc:name="Logger" />
-			</batch:step>
-		</batch:process-records>
-		<batch:on-complete>
-			<logger message="Batch complete: #[payload]" level="INFO"
-				doc:name="Logger" />
-		</batch:on-complete>
-	</batch:job>
+    <jms:activemq-connector name="jmsConnector"
+                            specification="1.1" brokerURL="vm://localhost" validateConnections="true"
+                            doc:name="Active MQ"/>
+
+    <jms-batch-messaging:config name="JmsBatchMessaging"
+                                connector-ref="jmsConnector" doc:name="JmsBatchMessaging"/>
+
+    <flow name="testFlow">
+        <jms-batch-messaging:consume
+                config-ref="JmsBatchMessaging" destinationName="foo" batchSize="5" isTopic="false"
+                timeout="1000" doc:name="JmsBatchMessaging (Streaming)"/>
+        <logger message="Batch Step: #[payload]" level="INFO" category="org.mule.modules.jmsbatchmessaging"
+                doc:name="Logger"/>
+        <jms-batch-messaging:acknowledge config-ref="JmsBatchMessaging"/>
+        <jms-batch-messaging:complete config-ref="JmsBatchMessaging"/>
+        <jms:outbound-endpoint queue="completed"/>
+    </flow>
+
 </mule>
