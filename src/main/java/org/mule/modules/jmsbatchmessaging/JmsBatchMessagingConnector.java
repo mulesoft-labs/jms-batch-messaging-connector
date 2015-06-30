@@ -287,6 +287,10 @@ public class JmsBatchMessagingConnector implements MuleContextAware {
                     producer.send(session.createTextMessage(message));
                 }
                 messages.clear();
+                if (isTransactional) {
+                    session.commit();
+                }
+                session.close();
             } finally {
                 if (session != null) {
                     session.close();
