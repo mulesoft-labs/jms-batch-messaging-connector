@@ -1,34 +1,17 @@
-# JmsBatchMessaging Anypoint Connector
+Mule JMS Batch Messaging Module
+====================
 
-[Connector description including destination service or application with]
+The Mule JMS Batch Messaging Module adds message batching semantics on top of the standard JMS connector.
+This module provides message processors to consume and dispatch messages with configurable batch sizes,
+control the ACK'ing of  messages in the batches and explicitly closing resources associated with the processing
+of the batches.
 
-# Mule supported versions
-Examples:
-Mule 3.4.x, 3.5.x
-Mule 3.4.1
+Installation and Usage
+----------------------
 
-# [Destination service or application name] supported versions
-Example:
-Oracle E-Business Suite 12.1 and above.
+For information about usage and installation you can check our documentation at http://mulesoft.github.com/jms-batch-messaging-connector
 
-#Service or application supported modules
-Example:
-Oracle CRM
-Oracle Financials
-or 
-Salesforce API v.24
-Salesforce Metadata API
+Reporting Issues
+----------------
 
-
-# Installation 
-For beta connectors you can download the source code and build it with devkit to find it available on your local repository. Then you can add it to Studio…<TBD>
-
-For released connectors you can download them from the update site in Studio. 
-Open MuleStudio, go to Help → Install New Software and select MuleStudio Cloud Connectors Update Site where you’ll find all avaliable connectors.
-
-#Usage
-For information about usage our documentation at http://github.com/mulesoft/jms-batch-messaging.
-
-# Reporting Issues
-
-We use GitHub:Issues for tracking issues with this connector. You can report new issues at this link http://github.com/mulesoft/jms-batch-messaging/issues.# jms-batch-messaging-connector
+We use GitHub:Issues for tracking issues with this module. You can report new issues at this link https://github.com/mulesoft-labs/jms-batch-messaging-connector/issues
