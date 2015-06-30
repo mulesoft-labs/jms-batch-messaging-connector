@@ -42,23 +42,17 @@ public class JmsBatchMessagingConnector implements MuleContextAware {
     protected transient Log logger = LogFactory.getLog(getClass());
 
     /**
-     * Configurable
+     * The JMS connector to receive and send messages
      */
     @Configurable
     JmsConnector connector;
 
-    /**
-     * Configurable
-     */
-    @Configurable
-    @Default("1")
-    Integer amountOfThreads;
 
     /**
-     * Configurable
+     * Whether or not transactions should be used when receiving and sending messages.
      */
     @Configurable
-    @Default("1")
+    @Default("false")
     Boolean isTransactional;
 
     MuleContext muleContext;
@@ -71,19 +65,20 @@ public class JmsBatchMessagingConnector implements MuleContextAware {
 
 
     /**
-     * Custom processor
+     * Consume messages in batches from a JMS destination.
      * <p/>
-     * {@sample.xml ../../../doc/db-batch-messaging-connector.xml.sample
-     * db-batch-messaging:batch-consume}
+     * {@sample.xml ../../../doc/jms-batch-messaging-connector.xml.sample
+     * jms-batch-messaging:consume}
      *
-     * @param callback        Comment for callback
-     * @param destinationName Comment for queueName
-     * @param batchSize       Comment for batchSize
-     * @param timeout         Comment for timeout
-     * @throws Exception Comment for Exception
+     * @param destinationName The JMS destination to consume messages from
+     * @param amountOfThreads The amount of threads used to consume messages in parallel batches
+     * @param batchSize       The size of each batch
+     * @param timeout         The timeout, in milliseconds, to wait before releasing a batch that hasn't received its full batch of messages
+     * @param isTopic         Whether or not the JMS destination is a topic.
+     * @throws Exception
      */
     @Source
-    public void consume(String destinationName, Boolean isTopic,
+    public void consume(String destinationName, int amountOfThreads, Boolean isTopic,
                         int batchSize, long timeout,
                         final SourceCallback callback) throws Exception {
         Lock lock = null;
@@ -94,11 +89,11 @@ public class JmsBatchMessagingConnector implements MuleContextAware {
 
             logger.debug(String.format(
                     "Starting batch (size=%s) processing with %s threads",
-                    batchSize, this.amountOfThreads));
+                    batchSize, amountOfThreads));
 
             ExecutorService executorService = Executors
-                    .newFixedThreadPool(this.amountOfThreads);
-            for (int i = 0; i < this.amountOfThreads; i++) {
+                    .newFixedThreadPool(amountOfThreads);
+            for (int i = 0; i < amountOfThreads; i++) {
                 executorService.execute(new DestinationMessageConsumer(muleContext, batchSize,
                         timeout, callback, connector, destinationName, isTopic, isTransactional));
             }
@@ -119,6 +114,16 @@ public class JmsBatchMessagingConnector implements MuleContextAware {
         }
     }
 
+    /**
+     * Acknowledge messages in a batch
+     * <p/>
+     * {@sample.xml ../../../doc/jms-batch-messaging-connector.xml.sample
+     * jms-batch-messaging:acknowledge}
+     *
+     * @param muleMessage the current MuleMessage
+     * @param message The individual message to batch.  If this isn't set the entire batch is acknowledged.  Note that messages are held in the "messages" inboundProperty.
+     * @throws Exception Comment for Exception
+     */
     @Processor
     @Inject
     public void acknowledge(MuleMessage muleMessage, @Optional Message message)
@@ -135,6 +140,15 @@ public class JmsBatchMessagingConnector implements MuleContextAware {
         }
     }
 
+    /**
+     * Complete the batch operation and release all resources (including closing any open transactions.)
+     * <p/>
+     * {@sample.xml ../../../doc/jms-batch-messaging-connector.xml.sample
+     * jms-batch-messaging:complete}
+     *
+     * @param muleMessage the current MuleMessage
+     * @throws Exception
+     */
     @Processor
     @Inject
     public void complete(MuleMessage muleMessage) throws Exception {
@@ -152,21 +166,22 @@ public class JmsBatchMessagingConnector implements MuleContextAware {
 
 
     /**
-     * Custom processor
+     * Dispatch messages in batch.
      * <p/>
-     * {@sample.xml ../../../doc/db-batch-messaging-connector.xml.sample
-     * db-batch-messaging:batch-send}
+     * {@sample.xml ../../../doc/jms-batch-messaging-connector.xml.sample
+     * jms-batch-messaging:complete}
      *
-     * @param payload   Comment for payload
-     * @param destinationName Comment for queueName
-     * @param batchSize Comment for batchSize
-     * @return Some string
-     * @throws Exception Comment for Exception
+     * @param payload specifies the payload of the message added to the outgoing batch.
+     * @param destinationName The JMS destination to consume messages from
+     * @param sendTimeout The delay, in milliseconds, to wait before releasing non-full batches.
+     * @param batchSize   The size of each batch
+     * @param isTopic         Whether or not the JMS destination is a topic.
+     * @throws Exception
      */
     @SuppressWarnings({"unchecked"})
     @Processor
     public synchronized void send(@Payload Object payload,
-                                       String destinationName, int batchSize, int sendTimeout, Boolean isTopic) throws Exception {
+                                       String destinationName, int batchSize, long sendTimeout, Boolean isTopic) throws Exception {
 
         List<String> queueMessages = getListOfMessages(sendMessageBuffer,
                 destinationName);
@@ -211,13 +226,6 @@ public class JmsBatchMessagingConnector implements MuleContextAware {
         this.connector = connector;
     }
 
-    public Integer getAmountOfThreads() {
-        return amountOfThreads;
-    }
-
-    public void setAmountOfThreads(Integer amountOfThreads) {
-        this.amountOfThreads = amountOfThreads;
-    }
 
     public MuleContext getMuleContext() {
         return muleContext;

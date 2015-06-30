@@ -1,3 +1,15 @@
-<!-- BEGIN_INCLUDE(jms-batch-messaging:greet) -->
-    <jms-batch-messaging:greet config-ref="" friend="#[map-payload:friend]" />
-<!-- END_INCLUDE(jms-batch-messaging:greet) -->
+<!-- BEGIN_INCLUDE(jms-batch-messaging:consume) -->
+      <jms-batch-messaging:consume config-ref="JmsBatchMessaging" destinationName="foo" batchSize="5" isTopic="false" timeout="1000"/>
+<!-- END_INCLUDE(jms-batch-messaging:consume) -->
+
+<!-- BEGIN_INCLUDE(jms-batch-messaging:acknowledge) -->
+              <jms-batch-messaging:acknowledge config-ref="JmsBatchMessaging" message="#[message.inboundProperties['messages'][1]]/>
+<!-- END_INCLUDE(jms-batch-messaging:acknowledge) -->
+
+<!-- BEGIN_INCLUDE(jms-batch-messaging:complete) -->
+        <jms-batch-messaging:complete config-ref="JmsBatchMessaging"/>
+<!-- END_INCLUDE(jms-batch-messaging:complete) -->
+
+<!-- BEGIN_INCLUDE(jms-batch-messaging:send) -->
+ <jms-batch-messaging:send config-ref="JmsBatchMessaging" sendTimeout="1000" destinationName="completed"  batchSize="5" isTopic="false"/>
+<!-- END_INCLUDE(jms-batch-messaging:send) -->
