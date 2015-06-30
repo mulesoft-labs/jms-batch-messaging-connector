@@ -16,19 +16,18 @@ http://www.mulesoft.org/schema/mule/jms-batch-messaging/1.0/mule-jms-batch-messa
                             specification="1.1" brokerURL="vm://localhost" validateConnections="true"
                             doc:name="Active MQ"/>
 
-    <jms-batch-messaging:config name="JmsBatchMessaging" amountOfThreads="1"
+    <jms-batch-messaging:config name="JmsBatchMessaging" amountOfThreads="1" isTransactional="false"
                                 connector-ref="jmsConnector" doc:name="JmsBatchMessaging"/>
 
     <flow name="testFlow">
         <jms-batch-messaging:consume
                 config-ref="JmsBatchMessaging" destinationName="foo" batchSize="5" isTopic="false"
-                isTransactional="false"
                 timeout="1000" doc:name="JmsBatchMessaging (Streaming)"/>
         <logger message="Batch Step: #[payload]" level="INFO" category="org.mule.modules.jmsbatchmessaging"
                 doc:name="Logger"/>
         <jms-batch-messaging:acknowledge config-ref="JmsBatchMessaging"/>
-        <jms-batch-messaging:send config-ref="JmsBatchMessaging" sendTimeout="1000" queueName="completed"
-                                  batchSize="5"/>
+        <jms-batch-messaging:send config-ref="JmsBatchMessaging" sendTimeout="1000" destinationName="completed"
+                                  batchSize="5" isTopic="false"/>
         <jms-batch-messaging:complete config-ref="JmsBatchMessaging"/>
     </flow>
 

@@ -54,6 +54,13 @@ public class JmsBatchMessagingConnector implements MuleContextAware {
     @Default("1")
     Integer amountOfThreads;
 
+    /**
+     * Configurable
+     */
+    @Configurable
+    @Default("1")
+    Boolean isTransactional;
+
     MuleContext muleContext;
 
     Timer sendTimer = new Timer();
@@ -77,7 +84,7 @@ public class JmsBatchMessagingConnector implements MuleContextAware {
      */
     @Source
     public void consume(String destinationName, Boolean isTopic,
-                        Boolean isTransactional, int batchSize, long timeout,
+                        int batchSize, long timeout,
                         final SourceCallback callback) throws Exception {
         Lock lock = null;
 
@@ -151,7 +158,7 @@ public class JmsBatchMessagingConnector implements MuleContextAware {
      * db-batch-messaging:batch-send}
      *
      * @param payload   Comment for payload
-     * @param queueName Comment for queueName
+     * @param destinationName Comment for queueName
      * @param batchSize Comment for batchSize
      * @return Some string
      * @throws Exception Comment for Exception
@@ -159,10 +166,10 @@ public class JmsBatchMessagingConnector implements MuleContextAware {
     @SuppressWarnings({"unchecked"})
     @Processor
     public synchronized void send(@Payload Object payload,
-                                       String queueName, int batchSize, int sendTimeout) throws Exception {
+                                       String destinationName, int batchSize, int sendTimeout, Boolean isTopic) throws Exception {
 
         List<String> queueMessages = getListOfMessages(sendMessageBuffer,
-                queueName);
+                destinationName);
         if (timeOutTimer != null) {
             timeOutTimer.cancel();
         }
@@ -176,11 +183,11 @@ public class JmsBatchMessagingConnector implements MuleContextAware {
 
         if (queueMessages.size() >= batchSize) {
             sendTimer.schedule(new MessageSender().setParams(sendMessageBuffer,
-                    queueName, connector), 1);
+                    destinationName, connector, isTopic), 1);
         } else {
             timeOutTimer = new Timer();
             timeOutTimer.schedule(new MessageSender().setParams(
-                    sendMessageBuffer, queueName, connector), sendTimeout);
+                    sendMessageBuffer, destinationName, connector, isTopic), sendTimeout);
         }
     }
 
@@ -220,6 +227,15 @@ public class JmsBatchMessagingConnector implements MuleContextAware {
         this.muleContext = muleContext;
     }
 
+
+    public Boolean getIsTransactional() {
+        return isTransactional;
+    }
+
+    public void setIsTransactional(Boolean isTransactional) {
+        this.isTransactional = isTransactional;
+    }
+
     @Stop
     public void stopConnector() {
         sendTimer.cancel();
@@ -232,13 +248,15 @@ public class JmsBatchMessagingConnector implements MuleContextAware {
         Map<String, List<String>> sendMessageBuffer;
         String queueName;
         JmsConnector connector;
+        Boolean isTopic;
 
         public MessageSender setParams(
                 Map<String, List<String>> sendMessageBuffer, String queueName,
-                JmsConnector connector) {
+                JmsConnector connector, Boolean isTopic) {
             this.sendMessageBuffer = sendMessageBuffer;
             this.queueName = queueName;
             this.connector = connector;
+            this.isTopic = isTopic;
             return this;
         }
 
@@ -246,7 +264,7 @@ public class JmsBatchMessagingConnector implements MuleContextAware {
         public void run() {
             try {
                 sendMessages(sendMessageBuffer, queueName,
-                        connector.getSession(false, false));
+                        connector.getSession(isTransactional, isTopic));
             } catch (java.lang.InterruptedException ie) {
                 // do nothing
             } catch (Exception e) {
