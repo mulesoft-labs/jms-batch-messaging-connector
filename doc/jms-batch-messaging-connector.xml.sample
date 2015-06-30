@@ -1,0 +1,3 @@
+<!-- BEGIN_INCLUDE(jms-batch-messaging:greet) -->
+    <jms-batch-messaging:greet config-ref="" friend="#[map-payload:friend]" />
+<!-- END_INCLUDE(jms-batch-messaging:greet) -->
