@@ -5,13 +5,13 @@
 
 package org.mule.modules.jmsbatchmessaging;
 
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 
-import com.sun.org.apache.xpath.internal.operations.Bool;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.mule.api.MuleContext;
@@ -20,16 +20,16 @@ import org.mule.api.annotations.Connector;
 import org.mule.api.annotations.Configurable;
 import org.mule.api.annotations.Processor;
 import org.mule.api.annotations.Source;
+import org.mule.api.annotations.lifecycle.Stop;
 import org.mule.api.annotations.param.Default;
 import org.mule.api.annotations.param.Optional;
+import org.mule.api.annotations.param.Payload;
 import org.mule.api.callback.SourceCallback;
 import org.mule.api.context.MuleContextAware;
 import org.mule.transport.jms.JmsConnector;
 
 import javax.inject.Inject;
-import javax.jms.Message;
-import javax.jms.MessageConsumer;
-import javax.jms.Session;
+import javax.jms.*;
 
 /**
  * Anypoint Connector
@@ -55,6 +55,13 @@ public class JmsBatchMessagingConnector implements MuleContextAware {
     Integer amountOfThreads;
 
     MuleContext muleContext;
+
+    Timer sendTimer = new Timer();
+
+    Timer timeOutTimer;
+
+    Map<String, List<String>> sendMessageBuffer = new ConcurrentHashMap<>();
+
 
     /**
      * Custom processor
@@ -136,6 +143,59 @@ public class JmsBatchMessagingConnector implements MuleContextAware {
         consumer.close();
     }
 
+
+    /**
+     * Custom processor
+     * <p/>
+     * {@sample.xml ../../../doc/db-batch-messaging-connector.xml.sample
+     * db-batch-messaging:batch-send}
+     *
+     * @param payload   Comment for payload
+     * @param queueName Comment for queueName
+     * @param batchSize Comment for batchSize
+     * @return Some string
+     * @throws Exception Comment for Exception
+     */
+    @SuppressWarnings({"unchecked"})
+    @Processor
+    public synchronized void send(@Payload Object payload,
+                                       String queueName, int batchSize, int sendTimeout) throws Exception {
+
+        List<String> queueMessages = getListOfMessages(sendMessageBuffer,
+                queueName);
+        if (timeOutTimer != null) {
+            timeOutTimer.cancel();
+        }
+
+        if (payload instanceof Collection) {
+            Collection<String> messages = (Collection<String>) payload;
+            queueMessages.addAll(messages);
+        } else if (payload instanceof String) {
+            queueMessages.add((String) payload);
+        }
+
+        if (queueMessages.size() >= batchSize) {
+            sendTimer.schedule(new MessageSender().setParams(sendMessageBuffer,
+                    queueName, connector), 1);
+        } else {
+            timeOutTimer = new Timer();
+            timeOutTimer.schedule(new MessageSender().setParams(
+                    sendMessageBuffer, queueName, connector), sendTimeout);
+        }
+    }
+
+
+    public List<String> getListOfMessages(Map<String, List<String>> map,
+                                          String queue) {
+        List<String> messages = map.get(queue);
+        if (messages == null) {
+            messages = Collections.synchronizedList(new ArrayList<String>());
+            map.put(queue, messages);
+        }
+        return messages;
+    }
+
+
     public JmsConnector getConnector() {
         return connector;
     }
@@ -158,6 +218,67 @@ public class JmsBatchMessagingConnector implements MuleContextAware {
 
     public void setMuleContext(MuleContext muleContext) {
         this.muleContext = muleContext;
+    }
+
+    @Stop
+    public void stopConnector() {
+        sendTimer.cancel();
+        if (timeOutTimer != null) {
+            timeOutTimer.cancel();
+        }
+    }
+
+    class MessageSender extends TimerTask {
+        Map<String, List<String>> sendMessageBuffer;
+        String queueName;
+        JmsConnector connector;
+
+        public MessageSender setParams(
+                Map<String, List<String>> sendMessageBuffer, String queueName,
+                JmsConnector connector) {
+            this.sendMessageBuffer = sendMessageBuffer;
+            this.queueName = queueName;
+            this.connector = connector;
+            return this;
+        }
+
+        @Override
+        public void run() {
+            try {
+                sendMessages(sendMessageBuffer, queueName,
+                        connector.getSession(false, false));
+            } catch (java.lang.InterruptedException ie) {
+                // do nothing
+            } catch (Exception e) {
+                logger.error(e.getMessage(), e);
+            }
+        }
+
+        public void sendMessages(Map<String, List<String>> messageMap,
+                                 String queueName, Session session) throws Exception {
+            MessageProducer producer = null;
+            try {
+                Destination destination = session.createQueue(queueName);
+                producer = session.createProducer(destination);
+
+                List<String> messages = messageMap.put(queueName,
+                        Collections.synchronizedList(new ArrayList<String>()));
+
+                for (String message : messages) {
+                    logger.debug("Sending message: " + message);
+                    producer.send(session.createTextMessage(message));
+                }
+                messages.clear();
+            } finally {
+                if (session != null) {
+                    session.close();
+                }
+                if (producer != null) {
+                    producer.close();
+                }
+            }
+        }
+
     }
 
 

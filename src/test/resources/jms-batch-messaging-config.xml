@@ -10,7 +10,7 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
 http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
 http://www.mulesoft.org/schema/mule/jms-batch-messaging
 http://www.mulesoft.org/schema/mule/jms-batch-messaging/1.0/mule-jms-batch-messaging.xsd
-"      version="EE-3.6.2">
+" version="EE-3.6.2">
 
     <jms:activemq-connector name="jmsConnector"
                             specification="1.1" brokerURL="vm://localhost" validateConnections="true"
@@ -27,8 +27,9 @@ http://www.mulesoft.org/schema/mule/jms-batch-messaging/1.0/mule-jms-batch-messa
         <logger message="Batch Step: #[payload]" level="INFO" category="org.mule.modules.jmsbatchmessaging"
                 doc:name="Logger"/>
         <jms-batch-messaging:acknowledge config-ref="JmsBatchMessaging"/>
-        <jms-batch-messaging:complete config-ref="JmsBaTranstchMessaging"/>
-        <jms:outbound-endpoint queue="completed"/>
+        <jms-batch-messaging:send config-ref="JmsBatchMessaging" sendTimeout="1000" queueName="completed"
+                                  batchSize="5"/>
+        <jms-batch-messaging:complete config-ref="JmsBatchMessaging"/>
     </flow>
 
 </mule>
