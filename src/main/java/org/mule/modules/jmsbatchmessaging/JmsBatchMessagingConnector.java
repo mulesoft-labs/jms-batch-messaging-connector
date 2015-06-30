@@ -11,6 +11,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 
+import com.sun.org.apache.xpath.internal.operations.Bool;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.mule.api.MuleContext;
@@ -68,7 +69,8 @@ public class JmsBatchMessagingConnector implements MuleContextAware {
      * @throws Exception Comment for Exception
      */
     @Source
-    public void consume(String destinationName, Boolean isTopic, int batchSize, long timeout,
+    public void consume(String destinationName, Boolean isTopic,
+                        Boolean isTransactional, int batchSize, long timeout,
                         final SourceCallback callback) throws Exception {
         Lock lock = null;
 
@@ -84,7 +86,7 @@ public class JmsBatchMessagingConnector implements MuleContextAware {
                     .newFixedThreadPool(this.amountOfThreads);
             for (int i = 0; i < this.amountOfThreads; i++) {
                 executorService.execute(new DestinationMessageConsumer(muleContext, batchSize,
-                        timeout, callback, connector, destinationName, isTopic));
+                        timeout, callback, connector, destinationName, isTopic, isTransactional));
             }
 
             executorService.shutdown();
@@ -93,6 +95,7 @@ public class JmsBatchMessagingConnector implements MuleContextAware {
                 executorService.awaitTermination(Long.MAX_VALUE,
                         TimeUnit.NANOSECONDS);
             } catch (InterruptedException e) {
+                logger.debug("Thread interrupted");
             }
 
         } finally {
@@ -115,7 +118,6 @@ public class JmsBatchMessagingConnector implements MuleContextAware {
             for (Message eachMessage : messages) {
                 eachMessage.acknowledge();
             }
-
         }
     }
 
@@ -125,10 +127,14 @@ public class JmsBatchMessagingConnector implements MuleContextAware {
         Session session = muleMessage.getInboundProperty("session");
         MessageConsumer consumer = muleMessage.getInboundProperty("consumer");
 
+        Boolean isTransactional = muleMessage.getInboundProperty("transactional");
+
+        if (isTransactional) {
+            session.commit();
+        }
         session.close();
         consumer.close();
     }
-
 
     public JmsConnector getConnector() {
         return connector;

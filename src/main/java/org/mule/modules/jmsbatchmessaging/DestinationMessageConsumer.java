@@ -7,7 +7,6 @@ import org.mule.api.callback.SourceCallback;
 import org.mule.transport.jms.JmsConnector;
 import org.mule.transport.jms.JmsConstants;
 import org.mule.transport.jms.JmsMessageUtils;
-import org.mule.transport.jms.transformers.JMSMessageToObject;
 
 import javax.jms.Destination;
 import javax.jms.Message;
@@ -26,12 +25,13 @@ public class DestinationMessageConsumer implements Runnable {
     private JmsConnector connector;
     private Boolean isTopic;
     private MuleContext muleContext;
+    private Boolean isTransactional;
 
     protected transient Log logger = LogFactory.getLog(getClass());
 
     public DestinationMessageConsumer(MuleContext muleContext, Integer amountOfMessages, long timeout,
                                       SourceCallback callback, JmsConnector connector,
-                                      String queueName, Boolean isTopic) {
+                                      String queueName, Boolean isTopic, Boolean isTransactional) {
         this.amountOfMessages = amountOfMessages;
         this.timeout = timeout;
         this.callback = callback;
@@ -39,6 +39,7 @@ public class DestinationMessageConsumer implements Runnable {
         this.queueName = queueName;
         this.isTopic = isTopic;
         this.muleContext = muleContext;
+        this.isTransactional = isTransactional;
     }
 
     @Override
@@ -53,7 +54,8 @@ public class DestinationMessageConsumer implements Runnable {
                 MessageConsumer consumer;
                 synchronized (this) {
 
-                    session = connector.getSession(false, false);
+                    session = connector.getSession(isTransactional, isTopic);
+
                     if (isTopic) {
                         destination = session.createTopic(queueName);
                     } else {
@@ -92,6 +94,7 @@ public class DestinationMessageConsumer implements Runnable {
                     properties.put("session", session);
                     properties.put("consumer", consumer);
                     properties.put("messages", jmsMessagesToAck);
+                    properties.put("transactional", isTransactional);
                     callback.process(plainMessages, properties);
                 }
             }
@@ -99,5 +102,4 @@ public class DestinationMessageConsumer implements Runnable {
             logger.error("Error: ", t);
         }
     }
-
 }
