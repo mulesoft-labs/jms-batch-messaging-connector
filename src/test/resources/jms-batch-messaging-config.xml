@@ -21,7 +21,7 @@ http://www.mulesoft.org/schema/mule/jms-batch-messaging/1.0/mule-jms-batch-messa
 
     <flow name="testFlow">
         <jms-batch-messaging:consume
-                config-ref="JmsBatchMessaging" destinationName="foo" batchSize="5" isTopic="false"
+                config-ref="JmsBatchMessaging" destinationName="foo" batchSize="5" isTopic="false" amountOfThreads="4"
                 timeout="1000" doc:name="JmsBatchMessaging (Streaming)"/>
         <logger message="Batch Step: #[payload]" level="INFO" category="org.mule.modules.jmsbatchmessaging"
                 doc:name="Logger"/>

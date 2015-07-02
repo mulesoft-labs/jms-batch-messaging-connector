@@ -42,4 +42,11 @@
             <layout>default</layout>
         </repository>
     </repositories>
+
+
+    <scm>
+        <connection>scm:git:git://github.com:mulesoft-labs/jms-batch-messaging-connector.git</connection>
+        <developerConnection>scm:git:git@github.com:mulesoft-labs/jms-batch-messaging-connector.git</developerConnection>
+        <url>https://github.com/mulesoft-labs/jms-batch-messaging-connector</url>
+    </scm>
 </project>
