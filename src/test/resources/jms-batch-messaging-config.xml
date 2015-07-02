@@ -16,7 +16,7 @@ http://www.mulesoft.org/schema/mule/jms-batch-messaging/1.0/mule-jms-batch-messa
                             specification="1.1" brokerURL="vm://localhost" validateConnections="true"
                             doc:name="Active MQ"/>
 
-    <jms-batch-messaging:config name="JmsBatchMessaging" amountOfThreads="1" isTransactional="false"
+    <jms-batch-messaging:config name="JmsBatchMessaging" isTransactional="false"
                                 connector-ref="jmsConnector" doc:name="JmsBatchMessaging"/>
 
     <flow name="testFlow">
